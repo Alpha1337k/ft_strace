@@ -1,7 +1,7 @@
 NAME=ft_strace
 
 CC=gcc
-FLAGS=-Wall -Werror -Wextra
+FLAGS=
 DEBUG_FLAGS=-g -fsanitize=address
 SRC=src/*.c
 LIBS=
