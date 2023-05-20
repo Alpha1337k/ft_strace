@@ -148,7 +148,7 @@ char	*parse_struct_rusage_ptr(void *data, pid_t pid, struct user_regs_struct reg
 
 char	*parse_int(void *data, pid_t pid, struct user_regs_struct regs)
 {
-	return parse_void_ptr(data, pid, regs);
+	return parse_unsigned_int(data, pid, regs);
 }
 
 char	*parse_struct_robust_list_head_ptr(void *data, pid_t pid, struct user_regs_struct regs)

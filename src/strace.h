@@ -1,6 +1,7 @@
 #ifndef FT_STRACE_H
 #define FT_STRACE_H
 
+#include <string.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/ptrace.h>
@@ -14,6 +15,7 @@ typedef struct s_header
 {
 	char name[30];
 	char *(*funcs[6])(void *, pid_t, struct user_regs_struct);
+	char *(*rax_resolver)(void *, pid_t, struct user_regs_struct);
 } t_header;
 
 char	*parse_struct_mq_attr_ptr(void *data, pid_t pid, struct user_regs_struct regs);

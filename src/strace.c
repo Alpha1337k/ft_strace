@@ -76,7 +76,7 @@ int main(int argc, char **argv)
 			waitpid(pid, &status, 0);
 
 			ptrace(PTRACE_GETREGS, pid, 0, &regs);
-			printf(") = %p\n", (void *)regs.rax);
+			printf(") = %s\n", SYSCALLS_x64[syscall].rax_resolver((void *)regs.rax, pid, regs));
 
 			if (WIFEXITED(status))
 			{
