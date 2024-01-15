@@ -10,6 +10,7 @@
 #include <sys/user.h>
 #include <sys/syscall.h>
 #include <stdlib.h>
+#include <errno.h>
 
 typedef struct s_header
 {
@@ -17,11 +18,14 @@ typedef struct s_header
 	char *(*funcs[6])(void *, pid_t, struct user_regs_struct);
 	char *(*rax_resolver)(void *, pid_t, struct user_regs_struct);
 } t_header;
+char	*parse_char_ptr(void *data, pid_t pid, struct user_regs_struct regs);
+char	*parse_char_ptr_rsi(void *data, pid_t pid, struct user_regs_struct regs);
+char	*parse_char_ptr_rdx(void *data, pid_t pid, struct user_regs_struct regs);
+char	*parse_char_ptr_r10(void *data, pid_t pid, struct user_regs_struct regs);
 
 char	*parse_struct_mq_attr_ptr(void *data, pid_t pid, struct user_regs_struct regs);
 char	*parse_unsigned_ptr(void *data, pid_t pid, struct user_regs_struct regs);
 char	*parse_struct_sembuf_ptr(void *data, pid_t pid, struct user_regs_struct regs);
-char	*parse_char_ptr(void *data, pid_t pid, struct user_regs_struct regs);
 char	*parse_u64(void *data, pid_t pid, struct user_regs_struct regs);
 char	*parse_struct_siginfo_ptr(void *data, pid_t pid, struct user_regs_struct regs);
 char	*parse_void_ptr___ptr(void *data, pid_t pid, struct user_regs_struct regs);

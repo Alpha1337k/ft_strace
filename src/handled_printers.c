@@ -51,29 +51,65 @@ char	*replace_special_chars(char s) {
 	}
 }
 
-char	*parse_char_ptr(void *data, pid_t pid, struct user_regs_struct regs)
+char	*__parse_char_ptr(void *data, pid_t pid, struct user_regs_struct regs, int len)
 {
 	size_t idx = 0;
 	size_t str_idx = 0;
-	char *s = malloc(1024);
-	while (1)
+	char is_eol = 0;
+	char *s = calloc(1, 1024);
+
+	while (idx < 32 && (int)idx < len)
 	{
 		long addy = ptrace(PTRACE_PEEKTEXT, pid, data + idx);
-		for (size_t i = 0; i < 8; i++)
-		{
-			if (replace_special_chars(((char *)&addy)[i]) != 0)
-				str_idx += sprintf(s + str_idx, "%s", replace_special_chars(((char *)&addy)[i]));
-			else
-				str_idx += sprintf(s + str_idx, "%c", ((char *)&addy)[i]);
+		if (errno != 0 && addy == -1) {
+			perror("peektext");
+			exit(1);
 		}
 
-		if (memchr((void *)&addy, 0, 8)) {
+		for (size_t i = 0; i < 8; i++)
+		{
+			char val = ((char *)&addy)[i];
+			// printf("V:%x %d\n", (unsigned)val, val);
+			if (replace_special_chars(val) != 0)
+				str_idx += sprintf(s + str_idx, "%s", replace_special_chars(val));
+			else if ((val < 31 || val > 126))
+				str_idx += sprintf(s + str_idx, "\\%u", val & 0xff);
+			else
+				str_idx += sprintf(s + str_idx, "%c", val);
+		}
+
+		if (memchr((void *)&addy, 0, 8) && len == -1) {
+			is_eol = 1;
 			break;
 		}
 		idx += 8;
 	}
 	char *rv = malloc(1024);
-	sprintf(rv, "\"\033[0;31m%s\033[0m\"", s);
+	if (is_eol)
+		sprintf(rv, "\"\033[0;31m%s\033[0m\"", s);
+	else 
+		sprintf(rv, "\"\033[0;31m%s\033[0m\"...", s);
 	
 	return rv;
 }
+
+char	*parse_char_ptr(void *data, pid_t pid, struct user_regs_struct regs)
+{
+	return __parse_char_ptr(data, pid, regs, -1);
+}
+
+char	*parse_char_ptr_rsi(void *data, pid_t pid, struct user_regs_struct regs)
+{
+	return __parse_char_ptr(data, pid, regs, regs.rsi);
+}
+
+char	*parse_char_ptr_rdx(void *data, pid_t pid, struct user_regs_struct regs)
+{
+	return __parse_char_ptr(data, pid, regs, regs.rdx);
+}
+
+char	*parse_char_ptr_r10(void *data, pid_t pid, struct user_regs_struct regs)
+{
+	return __parse_char_ptr(data, pid, regs, regs.r10);
+}
+

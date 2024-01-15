@@ -47,16 +47,16 @@ int main(int argc, char **argv)
 		ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_EXITKILL);
 		
 
-		for (size_t i = 0; i < 100; i++)
+		for (size_t i = 0; i < 500; i++)
 		{
-			ptrace(PTRACE_SYSCALL, pid, 0, 0);
-			waitpid(pid, &status, 0);
-
 			struct user_regs_struct regs;
 			ptrace(PTRACE_GETREGS, pid, 0, &regs);
 			long syscall = regs.orig_rax;
 
 			printf("\033[31;1m%s\033[0m(", SYSCALLS_x64[syscall].name);
+
+			ptrace(PTRACE_SYSCALL, pid, 0, 0);
+			waitpid(pid, &status, 0);
 			for (size_t i = 0; i < 6; i++)
 			{
 				if (SYSCALLS_x64[syscall].funcs[i] != NULL) 
@@ -72,15 +72,12 @@ int main(int argc, char **argv)
 				}
 			}
 
-			ptrace(PTRACE_SYSCALL, pid, 0, 0);
-			waitpid(pid, &status, 0);
-
 			ptrace(PTRACE_GETREGS, pid, 0, &regs);
 			printf(") = %s\n", SYSCALLS_x64[syscall].rax_resolver((void *)regs.rax, pid, regs));
 
 			if (WIFEXITED(status))
 			{
-				printf("--exited--\n");
+				printf("+++ exited with %d +++\n", status);
 				return 0;
 			}
 
@@ -90,7 +87,11 @@ int main(int argc, char **argv)
 			// 		(long)regs.r10, (long)regs.r8,  (long)regs.r9, (long)regs.rax);
 		}
 		
-
+		if (WIFEXITED(status))
+		{
+			printf("+++ exited with %d +++\n", status);
+			return 0;
+		}
 	}
 
 	return (0);
