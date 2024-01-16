@@ -1,6 +1,10 @@
 #include "strace.h"
 
 extern const t_header SYSCALLS_x64[1024];
+#define EXIT_STATE_UNSET 0xFFFF
+#define IS_EXIT_STATE(status) status & 0xFF == status
+#define PTRACE_EVENT_STATE 0x8000
+#define PTRACE_EVENT(status) status >> 16
 
 unsigned long long get_register_idx(size_t idx, struct user_regs_struct regs)
 {
@@ -22,6 +26,55 @@ unsigned long long get_register_idx(size_t idx, struct user_regs_struct regs)
 	return 0;
 }
 
+void	handle_ptrace_event(pid_t pid, int status)
+{
+	if (status>>8 == (SIGTRAP | (PTRACE_EVENT_EXIT<<8)))
+	{
+		unsigned long res = 0;
+		if (ptrace(PTRACE_GETEVENTMSG, pid, 0, &res) == -1) {
+			perror("TRACEEXIT");
+			exit(1);
+		}
+
+		printf(") = ?\n+++ exited with %lu +++\n", res);
+
+		exit(0);
+	}
+
+	assert(0);
+}
+
+struct user_regs_struct get_next_syscall_regs(pid_t pid, int *exit_state, int *status)
+{
+	struct user_regs_struct registries;
+
+	if (ptrace(PTRACE_SYSCALL, pid, 0, 0) == -1) {
+		perror("syscall1");
+		exit(1);
+	}
+	if (waitpid(pid, status, 0) == -1) {
+		perror("waitpid");
+		exit(1);
+	}
+
+	if (WIFEXITED(*status)) {
+		exit_state[0] = *status;
+		return registries;
+	}
+
+	if (PTRACE_EVENT(*status)) {
+		exit_state[0] = PTRACE_EVENT_STATE;
+		return registries;
+	}
+
+	if (ptrace(PTRACE_GETREGS, pid, 0, &registries) == -1) {
+		perror("getregs");
+		exit(1);
+	}
+
+	return registries;
+}
+
 int main(int argc, char **argv)
 {
 	if (argc < 2)
@@ -36,42 +89,43 @@ int main(int argc, char **argv)
 		return 1;
 	} else if (pid == 0)
 	{
-		ptrace(PTRACE_TRACEME, 0, 0, 0);
+		// ptrace(PTRACE_TRACEME, 0, 0, 0);
 		execvp(argv[1], &argv[1]);
 		printf("FATAL: execve error\n");
 	} else if (pid == -1) {
 		perror("fork");
+		exit(1);
 	} else
 	{
 		int status;
 
-		// ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_EXITKILL);	
+		if (ptrace(PTRACE_SEIZE, pid, 0, PTRACE_O_TRACESYSGOOD | PTRACE_O_EXITKILL | PTRACE_O_TRACEEXIT) == -1) {
+			perror("ATTACH");
+			exit(1);
+		}
 
-		// int interrupt = ptrace(PTRACE_INTERRUPT, pid, NULL, NULL);
-		waitpid(pid, &status, 0);
+		int interrupt = ptrace(PTRACE_INTERRUPT, pid, NULL, NULL);
+		int pid = waitpid(pid, &status, 0);
 		
 		while(1)
 		{
+			int exit_state = EXIT_STATE_UNSET;
+			struct user_regs_struct regs = get_next_syscall_regs(pid, &exit_state, &status);
 
-			struct user_regs_struct regs;
-			if (ptrace(PTRACE_GETREGS, pid, 0, &regs) == -1) {
-				perror("getrval_0");
-				exit(1);
-			}
-			long syscall = regs.orig_rax;
-
-			printf("\033[31;1m%s\033[0m(", SYSCALLS_x64[syscall].name);
-
-			if (ptrace(PTRACE_SYSCALL, pid, 0, 0) == -1) {
-				perror("syscall1");
-				exit(1);
-			}
-			waitpid(pid, &status, 0);
-			if (WIFEXITED(status))
-			{
-				printf("+++ exited with %d +++\n", status);
+			if (exit_state == PTRACE_EVENT_STATE) {
+				handle_ptrace_event(pid, status);
 				return 0;
 			}
+
+			if (IS_EXIT_STATE(exit_state)) {
+				unsigned long res = 0;
+
+				printf("+++ exited with %u +++\n", status);
+				return 0;
+			}
+
+			long syscall = regs.orig_rax;
+			printf("\033[31;1m%s\033[0m(", SYSCALLS_x64[syscall].name);
 
 			for (size_t i = 0; i < 6; i++)
 			{
@@ -88,27 +142,24 @@ int main(int argc, char **argv)
 				}
 			}
 
-			// if (ptrace(PTRACE_GETREGS, pid, 0, &regs) == -1) {
-			// 	perror("getrval");
-			// 	exit(1);
-			// }
-			printf(") = %s\n", SYSCALLS_x64[syscall].rax_resolver((void *)regs.rax, pid, regs));
-			if (ptrace(PTRACE_SYSCALL, pid, 0, 0) == -1) {
-				perror("syscall1");
-				exit(1);
+			regs = get_next_syscall_regs(pid, &exit_state, &status);
+
+			if (exit_state == PTRACE_EVENT_STATE) {
+				handle_ptrace_event(pid, status);
+				return 0;
 			}
-			waitpid(pid, &status, 0);
+			if (IS_EXIT_STATE(exit_state)) {
+
+				printf("+++ exited with %u +++\n", status);
+				return 0;
+			}
+
+			printf(") = %s\n", SYSCALLS_x64[syscall].rax_resolver((void *)regs.rax, pid, regs));
 
 			// fprintf(stderr, "%ld(%ld, %ld, %ld, %ld, %ld, %ld) = %lx\n",
 			// 		syscall,
 			// 		(long)regs.rdi, (long)regs.rsi, (long)regs.rdx,
 			// 		(long)regs.r10, (long)regs.r8,  (long)regs.r9, (long)regs.rax);
-		}
-		
-		if (WIFEXITED(status))
-		{
-			printf("+++ exited with %d +++\n", status);
-			return 0;
 		}
 	}
 

@@ -11,6 +11,7 @@
 #include <sys/syscall.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <assert.h>
 
 typedef struct s_header
 {
@@ -18,6 +19,9 @@ typedef struct s_header
 	char *(*funcs[6])(void *, pid_t, struct user_regs_struct);
 	char *(*rax_resolver)(void *, pid_t, struct user_regs_struct);
 } t_header;
+
+#define SIGTRAP	5
+
 char	*parse_char_ptr(void *data, pid_t pid, struct user_regs_struct regs);
 char	*parse_char_ptr_rsi(void *data, pid_t pid, struct user_regs_struct regs);
 char	*parse_char_ptr_rdx(void *data, pid_t pid, struct user_regs_struct regs);
@@ -117,5 +121,7 @@ char	*parse_struct_kexec_segment_ptr(void *data, pid_t pid, struct user_regs_str
 char	*parse_struct_linux_dirent_ptr(void *data, pid_t pid, struct user_regs_struct regs);
 char	*parse_struct_tms_ptr(void *data, pid_t pid, struct user_regs_struct regs);
 
+
+char *ft_strjoin(char *s1, char *s2);
 
 #endif
