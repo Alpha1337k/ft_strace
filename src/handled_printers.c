@@ -58,10 +58,25 @@ char	*__parse_char_ptr(void *data, pid_t pid, struct user_regs_struct regs, int 
 	char is_eol = 0;
 	char *s = calloc(1, 1024);
 
+	if (len < 0) len = __INT_MAX__;
+
+	if (data == NULL) {
+		char *rv = malloc(1024);
+		sprintf(rv, "\033[36;1mNULL\033[0m");
+		free(s);
+		return rv;
+	}
+
 	while (idx < 32 && (int)idx < len)
 	{
-		long addy = ptrace(PTRACE_PEEKTEXT, pid, data + idx);
-		if (errno != 0 && addy == -1) {
+		if (errno != 0) {
+			perror("PTB4");
+			exit(1);
+		}
+
+		long addy = ptrace(PTRACE_PEEKTEXT, pid, data + idx, NULL);
+		if (errno != 0) {
+			printf("\n%p %d\n", data, idx);
 			perror("peektext");
 			exit(1);
 		}
@@ -90,6 +105,8 @@ char	*__parse_char_ptr(void *data, pid_t pid, struct user_regs_struct regs, int 
 	else 
 		sprintf(rv, "\"\033[0;31m%s\033[0m\"...", s);
 	
+	free(s);
+
 	return rv;
 }
 

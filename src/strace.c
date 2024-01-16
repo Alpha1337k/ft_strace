@@ -39,24 +39,40 @@ int main(int argc, char **argv)
 		ptrace(PTRACE_TRACEME, 0, 0, 0);
 		execvp(argv[1], &argv[1]);
 		printf("FATAL: execve error\n");
+	} else if (pid == -1) {
+		perror("fork");
 	} else
 	{
 		int status;
 
-		waitpid(pid, &status, 0);
-		ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_EXITKILL);
-		
+		// ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_EXITKILL);	
 
-		for (size_t i = 0; i < 500; i++)
+		// int interrupt = ptrace(PTRACE_INTERRUPT, pid, NULL, NULL);
+		waitpid(pid, &status, 0);
+		
+		while(1)
 		{
+
 			struct user_regs_struct regs;
-			ptrace(PTRACE_GETREGS, pid, 0, &regs);
+			if (ptrace(PTRACE_GETREGS, pid, 0, &regs) == -1) {
+				perror("getrval_0");
+				exit(1);
+			}
 			long syscall = regs.orig_rax;
 
 			printf("\033[31;1m%s\033[0m(", SYSCALLS_x64[syscall].name);
 
-			ptrace(PTRACE_SYSCALL, pid, 0, 0);
+			if (ptrace(PTRACE_SYSCALL, pid, 0, 0) == -1) {
+				perror("syscall1");
+				exit(1);
+			}
 			waitpid(pid, &status, 0);
+			if (WIFEXITED(status))
+			{
+				printf("+++ exited with %d +++\n", status);
+				return 0;
+			}
+
 			for (size_t i = 0; i < 6; i++)
 			{
 				if (SYSCALLS_x64[syscall].funcs[i] != NULL) 
@@ -72,14 +88,16 @@ int main(int argc, char **argv)
 				}
 			}
 
-			ptrace(PTRACE_GETREGS, pid, 0, &regs);
+			// if (ptrace(PTRACE_GETREGS, pid, 0, &regs) == -1) {
+			// 	perror("getrval");
+			// 	exit(1);
+			// }
 			printf(") = %s\n", SYSCALLS_x64[syscall].rax_resolver((void *)regs.rax, pid, regs));
-
-			if (WIFEXITED(status))
-			{
-				printf("+++ exited with %d +++\n", status);
-				return 0;
+			if (ptrace(PTRACE_SYSCALL, pid, 0, 0) == -1) {
+				perror("syscall1");
+				exit(1);
 			}
+			waitpid(pid, &status, 0);
 
 			// fprintf(stderr, "%ld(%ld, %ld, %ld, %ld, %ld, %ld) = %lx\n",
 			// 		syscall,
