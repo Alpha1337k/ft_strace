@@ -1,27 +1,21 @@
-NAME=ft_strace
-
 CC=gcc
-FLAGS=-g
+FLAGS=
 DEBUG_FLAGS=-g -fsanitize=address
-SRC=src/*.c
+SRC=$(wildcard *.c)
+BINS=$(SRC:%.c=%)
 LIBS=
 OBJ=
 RM =rm -rf
 
-all: $(NAME)
+all: $(BINS)
 
-$(NAME): $(SRC)
-	$(CC) $(FLAGS) $(LIBS) $(SRC) -o $(NAME)
+%: $(SRC)/%.c
+	$(CC) $(CFLAGS) -o $(BIN)/$@ $<
 
 clean:
-	$(RM) $(OBJ)
 
 fclean: clean
-	make -C test fclean
-	$(RM) $(NAME)
-
-tests:
-	make -C test
+	$(RM) $(BINS)
 
 re: fclean all
 
