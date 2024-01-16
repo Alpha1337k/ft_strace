@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <assert.h>
+#include<string.h>
 
 typedef struct s_header
 {
