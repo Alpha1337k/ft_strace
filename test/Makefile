@@ -1,5 +1,5 @@
 CC=gcc
-FLAGS=
+FLAGS=-m32
 DEBUG_FLAGS=-g -fsanitize=address
 SRC=$(wildcard *.c)
 BINS=$(SRC:%.c=%)
@@ -10,7 +10,7 @@ RM =rm -rf
 all: $(BINS)
 
 %: $(SRC)/%.c
-	$(CC) $(CFLAGS) -o $(BIN)/$@ $<
+	$(CC) $(FLAGS) -o $(BIN)/$@ $<
 
 clean:
 
@@ -19,8 +19,3 @@ fclean: clean
 
 re: fclean all
 
-run: re
-	./$(NAME)
-
-debug: fclean
-	$(CC) $(FLAGS) $(DEBUG_FLAGS) $(LIBS) $(SRC) -o $(NAME)

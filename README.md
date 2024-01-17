@@ -76,3 +76,24 @@ return values kloppen niet
 	signal).  See the "group-stop" subsection for additional
 	information.  PTRACE_LISTEN works only on tracees attached
 	by PTRACE_SEIZE.
+
+
+### x64 reg by idx
+orig_rax=15
+rax=10
+rdi=14
+rsi=13
+rdx=12
+r10=7
+r8=9
+r9=8
+
+### x64_86 reg by idx
+orig_rax=11
+rax=6
+rdi=4
+rsi=3
+rdx=4
+r10=7
+r8=9
+r9=8

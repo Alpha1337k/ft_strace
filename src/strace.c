@@ -1,31 +1,13 @@
 #include "strace.h"
 
 extern const t_header SYSCALLS_x64[1024];
+extern const t_header SYSCALLS_x86[1024];
+
 #define EXIT_STATE_UNSET 0xFFFF
 #define IS_EXIT_STATE(status) status & 0xFF == status
 #define PTRACE_EVENT_STATE 0x8000
 #define PTRACE_EVENT(status) status >> 16
 #define IS_SIGNAL_STATE(status) ((status >> 8) & 0x7f) != 5
-
-unsigned long long get_register_idx(size_t idx, struct user_regs_struct regs)
-{
-	switch (idx)
-	{
-	case 0:
-		return regs.rdi;
-	case 1:
-		return regs.rsi;
-	case 2:
-		return regs.rdx;
-	case 3:
-		return regs.r10;
-	case 4:
-		return regs.r8;
-	case 5:
-		return regs.r9;
-	}
-	return 0;
-}
 
 void	handle_ptrace_event(pid_t pid, int status)
 {
@@ -45,9 +27,21 @@ void	handle_ptrace_event(pid_t pid, int status)
 	assert(0);
 }
 
-struct user_regs_struct get_next_syscall_regs(pid_t pid, int *exit_state, int *status)
+#define NT_PRSTATUS 1
+
+t_header get_syscall_header(regs_t registers)
 {
-	struct user_regs_struct registries;
+	if (registers.is64bit) {
+		return SYSCALLS_x64[registers.syscall];
+	}
+	return SYSCALLS_x86[registers.syscall];
+}
+
+regs_t get_next_syscall_regs(pid_t pid, int *exit_state, int *status)
+{
+	struct i386_user_regs_struct i386_regs;
+	struct user_regs_struct x64_regs;
+	regs_t rv;
 
 	if (ptrace(PTRACE_SYSCALL, pid, 0, 0) == -1) {
 		perror("syscall1");
@@ -60,20 +54,55 @@ struct user_regs_struct get_next_syscall_regs(pid_t pid, int *exit_state, int *s
 
 	if (WIFEXITED(*status)) {
 		exit_state[0] = *status;
-		return registries;
+		return rv;
 	}
 
 	if (PTRACE_EVENT(*status)) {
 		exit_state[0] = PTRACE_EVENT_STATE;
-		return registries;
+		return rv;
 	}
 
-	if (ptrace(PTRACE_GETREGS, pid, 0, &registries) == -1) {
-		perror("getregs");
+	u_int8_t regs[144];
+	struct iovec iov;
+
+	iov.iov_base = &regs;
+	iov.iov_len = sizeof(regs);
+
+	if (ptrace(PTRACE_GETREGSET, pid, (void *)NT_PRSTATUS, &iov) == -1) {
+		perror("getregset");
 		exit(1);
 	}
 
-	return registries;
+	if (iov.iov_len == 144) {
+		memcpy(&x64_regs, regs, 144);
+		rv.is64bit = 1;
+
+		rv.rval = x64_regs.rax;
+		rv.syscall = x64_regs.orig_rax;
+		rv.args[0] = x64_regs.rdi;
+		rv.args[1] = x64_regs.rsi;
+		rv.args[2] = x64_regs.rdx;
+		rv.args[3] = x64_regs.r10;
+		rv.args[4] = x64_regs.r8;
+		rv.args[5] = x64_regs.r9;
+	} else if (iov.iov_len == 68) {
+		memcpy(&i386_regs, regs, 68);
+		rv.is64bit = 0;
+
+		rv.rval = i386_regs.eax;
+		rv.syscall = i386_regs.orig_eax;
+		rv.args[0] = i386_regs.ebx;
+		rv.args[1] = i386_regs.ecx;
+		rv.args[2] = i386_regs.edx;
+		rv.args[3] = i386_regs.esi;
+		rv.args[4] = i386_regs.edi;
+		rv.args[5] = i386_regs.ebp;
+	} else
+		assert(0);
+
+	// printf("%d %d\n", rv.is64bit, rv.syscall);
+
+	return rv;
 }
 
 int	trace(pid_t pid)
@@ -92,7 +121,7 @@ int	trace(pid_t pid)
 	while(1)
 	{
 		int exit_state = EXIT_STATE_UNSET;
-		struct user_regs_struct regs = get_next_syscall_regs(pid, &exit_state, &status);
+		regs_t regs = get_next_syscall_regs(pid, &exit_state, &status);
 
 		if (exit_state == PTRACE_EVENT_STATE) {
 			handle_ptrace_event(pid, status);
@@ -109,7 +138,7 @@ int	trace(pid_t pid)
 
 			printf("%s", handle_signal(&info));
 
-			if (regs.orig_rax == -1) {
+			if (regs.syscall == -1) {
 				printf("+++ killed +++\n");
 				exit(0);
 			}
@@ -122,16 +151,17 @@ int	trace(pid_t pid)
 			return 0;
 		}
 
-		long syscall = regs.orig_rax;
-		printf("\033[31;1m%s\033[0m(", SYSCALLS_x64[syscall].name);
+
+		t_header header = get_syscall_header(regs);
+		printf("\033[31;1m%s\033[0m(", header.name);
 
 		for (size_t i = 0; i < 6; i++)
 		{
-			if (SYSCALLS_x64[syscall].funcs[i] != NULL) 
+			if (header.funcs[i] != NULL) 
 			{
-				char *str = SYSCALLS_x64[syscall].funcs[i]((void *)get_register_idx(i, regs), pid, regs);
+				char *str = header.funcs[i]((void *)regs.args[i], pid, regs);
 
-				printf("%s%c", str, i + 1 != 6 && SYSCALLS_x64[syscall].funcs[i + 1] != 0 ? ',' : ')');
+				printf("%s%c", str, i + 1 != 6 && header.funcs[i + 1] != 0 ? ',' : ')');
 				free(str);
 			} else {
 				break;
@@ -149,9 +179,9 @@ int	trace(pid_t pid)
 			return 0;
 		}
 
-		char *rax_res = exited ? strdup("?") : SYSCALLS_x64[syscall].rax_resolver((void *)regs.rax, pid, regs);
+		char *rax_res = exited ? strdup("?") : header.rax_resolver((void *)regs.rval, pid, regs);
 
-		printf(" = %s %p\n", rax_res, rax_res);
+		printf(" = %s\n", rax_res);
 
 		free(rax_res);
 

@@ -1,6 +1,6 @@
 #include "strace.h"
 
-char	*parse_void_ptr(void *data, pid_t pid, struct user_regs_struct regs)
+char	*parse_void_ptr(void *data, pid_t pid, regs_t regs)
 {
 	char *s = malloc(40);
 	if (data == 0)
@@ -10,14 +10,14 @@ char	*parse_void_ptr(void *data, pid_t pid, struct user_regs_struct regs)
 	return s;
 }
 
-char	*parse_unsigned_int(void *data, pid_t pid, struct user_regs_struct regs)
+char	*parse_unsigned_int(void *data, pid_t pid, regs_t regs)
 {
 	char *s = malloc(40);
 	sprintf(s, "\033[0;33m%ld\033[0m", (unsigned long)data);
 	return s;
 }
 
-char	*parse_size_t(void *data, pid_t pid, struct user_regs_struct regs)
+char	*parse_size_t(void *data, pid_t pid, regs_t regs)
 {
 	char *s = malloc(40);
 	sprintf(s, "\033[0;33m%ld\033[0m", (size_t)data);
@@ -51,7 +51,7 @@ char	*replace_special_chars(char s) {
 	}
 }
 
-char	*__parse_char_ptr(void *data, pid_t pid, struct user_regs_struct regs, int len)
+char	*__parse_char_ptr(void *data, pid_t pid, regs_t regs, int len)
 {
 	size_t idx = 0;
 	size_t str_idx = 0;
@@ -110,23 +110,23 @@ char	*__parse_char_ptr(void *data, pid_t pid, struct user_regs_struct regs, int 
 	return rv;
 }
 
-char	*parse_char_ptr(void *data, pid_t pid, struct user_regs_struct regs)
+char	*parse_char_ptr(void *data, pid_t pid, regs_t regs)
 {
 	return __parse_char_ptr(data, pid, regs, -1);
 }
 
-char	*parse_char_ptr_rsi(void *data, pid_t pid, struct user_regs_struct regs)
+char	*parse_char_ptr_rsi(void *data, pid_t pid, regs_t regs)
 {
-	return __parse_char_ptr(data, pid, regs, regs.rsi);
+	return __parse_char_ptr(data, pid, regs, regs.args[1]);
 }
 
-char	*parse_char_ptr_rdx(void *data, pid_t pid, struct user_regs_struct regs)
+char	*parse_char_ptr_rdx(void *data, pid_t pid, regs_t regs)
 {
-	return __parse_char_ptr(data, pid, regs, regs.rdx);
+	return __parse_char_ptr(data, pid, regs, regs.args[2]);
 }
 
-char	*parse_char_ptr_r10(void *data, pid_t pid, struct user_regs_struct regs)
+char	*parse_char_ptr_r10(void *data, pid_t pid, regs_t regs)
 {
-	return __parse_char_ptr(data, pid, regs, regs.r10);
+	return __parse_char_ptr(data, pid, regs, regs.args[3]);
 }
 

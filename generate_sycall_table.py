@@ -4,7 +4,7 @@ import csv
 
 all_parsers = set()
 
-with open('x64_syscalls.csv', newline='\n') as csvFile:
+with open('x86_syscalls.csv', newline='\n') as csvFile:
 	reader = csv.DictReader(csvFile)
 	arg_keys = ['arg0', 'arg1', 'arg2', 'arg3', 'arg4', 'arg5']
 	print("#include \"strace.h\"")
@@ -14,11 +14,13 @@ with open('x64_syscalls.csv', newline='\n') as csvFile:
 		for arg in arg_keys:
 			if (row[arg] == '-'): continue
 
+			row[arg] = row[arg].replace('*', 'ptr ')
+
 			if (row[arg][:-1] != '*'):
 				row[arg] = 'parse_' + ' '.join(row[arg].split(' ')[:-1]);
 			else:
 				row[arg] = 'parse_' + row[arg];
-			if row[arg] == 'parse_': row[arg] = "parse_unkown"
+			if row[arg] == 'parse_': row[arg] = "parse_unknown"
 			item = row[arg].replace('*', 'ptr ').replace('const ', '').replace('const', '').replace('?', 'unknown').strip().replace(' ', '_');
 			all_parsers.add(item)
 			args.append(item)
