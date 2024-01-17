@@ -22,6 +22,8 @@ void	handle_ptrace_event(pid_t pid, int status)
 		printf(" = ?\n+++ exited with %lu +++\n", res >> 8 & 0xFF);
 
 		exit(0);
+	} else if (status>>8 == (SIGTRAP | (PTRACE_EVENT_EXEC<<8))) {
+		return;
 	}
 
 	assert(0);
@@ -109,6 +111,7 @@ int	trace(pid_t pid)
 {
 	int status;
 	int exited = 0;
+	int is_64bit = 1;
 
 	if (ptrace(PTRACE_SEIZE, pid, 0, PTRACE_O_TRACESYSGOOD | PTRACE_O_EXITKILL | PTRACE_O_TRACEEXIT) == -1) {
 		perror("ATTACH");
@@ -123,9 +126,16 @@ int	trace(pid_t pid)
 		int exit_state = EXIT_STATE_UNSET;
 		regs_t regs = get_next_syscall_regs(pid, &exit_state, &status);
 
+		if (is_64bit == 1 && regs.is64bit == 0) {
+			printf("\e[38;5;248mstrace: [ Process PID=%d runs in 32 bit mode. ]\033[0m\n", pid);
+			is_64bit = 0;
+		} else if (is_64bit == 0 && regs.is64bit == 1) {
+			printf("strace: [ Process PID=%d runs in 64 bit mode. ]\n", pid);
+			is_64bit = 1;
+		}
+
 		if (exit_state == PTRACE_EVENT_STATE) {
 			handle_ptrace_event(pid, status);
-			return 0;
 		}
 
 		if (IS_SIGNAL_STATE(status)) {
@@ -142,6 +152,7 @@ int	trace(pid_t pid)
 				printf("+++ killed +++\n");
 				exit(0);
 			}
+			continue;
 		}
 
 		if (IS_EXIT_STATE(exit_state)) {
@@ -172,7 +183,6 @@ int	trace(pid_t pid)
 
 		if (exit_state == PTRACE_EVENT_STATE) {
 			handle_ptrace_event(pid, status);
-			return 0;
 		}
 		if (IS_EXIT_STATE(exit_state)) {
 			printf("+++ exited with %u +++\n", status);
