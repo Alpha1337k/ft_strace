@@ -5,6 +5,7 @@ extern const t_header SYSCALLS_x64[1024];
 #define IS_EXIT_STATE(status) status & 0xFF == status
 #define PTRACE_EVENT_STATE 0x8000
 #define PTRACE_EVENT(status) status >> 16
+#define IS_SIGNAL_STATE(status) ((status >> 8) & 0x7f) != 5
 
 unsigned long long get_register_idx(size_t idx, struct user_regs_struct regs)
 {
@@ -36,7 +37,7 @@ void	handle_ptrace_event(pid_t pid, int status)
 			exit(1);
 		}
 
-		printf(" = ?\n+++ exited with %lu +++\n", res);
+		printf(" = ?\n+++ exited with %lu +++\n", res >> 8 & 0xFF);
 
 		exit(0);
 	}
@@ -98,6 +99,22 @@ int	trace(pid_t pid)
 			return 0;
 		}
 
+		if (IS_SIGNAL_STATE(status)) {
+			siginfo_t info;
+
+			if (ptrace(PTRACE_GETSIGINFO, pid, 0, &info) == -1) {
+				perror("siginfo");			
+				exit(1);
+			}
+
+			printf("%s", handle_signal(&info));
+
+			if (regs.orig_rax == -1) {
+				printf("+++ killed +++\n");
+				exit(0);
+			}
+		}
+
 		if (IS_EXIT_STATE(exit_state)) {
 			unsigned long res = 0;
 
@@ -134,7 +151,7 @@ int	trace(pid_t pid)
 
 		char *rax_res = exited ? strdup("?") : SYSCALLS_x64[syscall].rax_resolver((void *)regs.rax, pid, regs);
 
-		printf(" = %s\n", rax_res);
+		printf(" = %s %p\n", rax_res, rax_res);
 
 		free(rax_res);
 
@@ -143,23 +160,30 @@ int	trace(pid_t pid)
 
 int main(int argc, char **argv)
 {
+	pid_t pid;
+
 	if (argc < 2)
 	{
 		printf("ft_strace: must have PROG [ARGS]\n");
 		return 1;
 	}
-
-	pid_t pid = fork();
-	if (pid == -1) {
-		printf("failed to open pipe");
-		return 1;
-	} else if (pid == 0)
+	if (argc == 3 && strcmp("-p", argv[1]) == 0 && atoi(argv[2]) != 0)
 	{
-		execvp(argv[1], &argv[1]);
-		printf("FATAL: execve error\n");
-	} else if (pid == -1) {
-		perror("fork");
-		exit(1);
-	} else
-		return trace(pid);
+		pid = atoi(argv[2]);
+		printf("%d\n", pid);
+	} else {
+		pid = fork();
+		if (pid == -1) {
+			printf("failed to open pipe");
+			return 1;
+		} else if (pid == 0)
+		{
+			execvp(argv[1], &argv[1]);
+			printf("FATAL: execve error\n");
+		} else if (pid == -1) {
+			perror("fork");
+			exit(1);
+		}
+	}
+	return trace(pid);
 }

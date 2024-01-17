@@ -6,13 +6,17 @@
 #include <unistd.h>
 #include <sys/ptrace.h>
 #include <sys/types.h>
+#include <sys/signal.h>
 #include <sys/wait.h>
 #include <sys/user.h>
 #include <sys/syscall.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <assert.h>
-#include<string.h>
+#include <string.h>
+#include <signal.h>
+
+#define _POSIX_C_SOURCE  200809L
 
 typedef struct s_header
 {
@@ -27,6 +31,8 @@ char	*parse_char_ptr(void *data, pid_t pid, struct user_regs_struct regs);
 char	*parse_char_ptr_rsi(void *data, pid_t pid, struct user_regs_struct regs);
 char	*parse_char_ptr_rdx(void *data, pid_t pid, struct user_regs_struct regs);
 char	*parse_char_ptr_r10(void *data, pid_t pid, struct user_regs_struct regs);
+
+char	*handle_signal(siginfo_t *info);
 
 char	*parse_struct_mq_attr_ptr(void *data, pid_t pid, struct user_regs_struct regs);
 char	*parse_unsigned_ptr(void *data, pid_t pid, struct user_regs_struct regs);
