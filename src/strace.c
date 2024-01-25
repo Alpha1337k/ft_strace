@@ -102,8 +102,6 @@ regs_t get_next_syscall_regs(pid_t pid, int *exit_state, int *status)
 	} else
 		assert(0);
 
-	// printf("%d %d\n", rv.is64bit, rv.syscall);
-
 	return rv;
 }
 

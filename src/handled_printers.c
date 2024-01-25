@@ -3,6 +3,8 @@
 char	*parse_void_ptr(void *data, pid_t pid, regs_t regs)
 {
 	char *s = malloc(40);
+	if (!s) return 0;
+
 	if (data == 0)
 		sprintf(s, "\033[36;1mNULL\033[0m");
 	else
@@ -13,6 +15,8 @@ char	*parse_void_ptr(void *data, pid_t pid, regs_t regs)
 char	*parse_unsigned_int(void *data, pid_t pid, regs_t regs)
 {
 	char *s = malloc(40);
+	if (!s) return 0;
+
 	sprintf(s, "\033[0;33m%ld\033[0m", (unsigned long)data);
 	return s;
 }
@@ -20,6 +24,8 @@ char	*parse_unsigned_int(void *data, pid_t pid, regs_t regs)
 char	*parse_size_t(void *data, pid_t pid, regs_t regs)
 {
 	char *s = malloc(40);
+	if (!s) return 0;
+
 	sprintf(s, "\033[0;33m%ld\033[0m", (size_t)data);
 	return s;
 }
@@ -57,6 +63,7 @@ char	*__parse_char_ptr(void *data, pid_t pid, regs_t regs, int len)
 	size_t str_idx = 0;
 	char is_eol = 0;
 	char *s = calloc(1, 1024);
+	if (!s) return 0;
 
 	if (len < 0) len = __INT_MAX__;
 
