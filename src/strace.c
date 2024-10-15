@@ -9,6 +9,18 @@ extern const t_header SYSCALLS_x86[1024];
 #define PTRACE_EVENT(status) status >> 16
 #define IS_SIGNAL_STATE(status) ((status >> 8) & 0x7f) != 5
 
+pid_t pid_ref = 0;
+
+void	stop_tracing()
+{
+	if (pid_ref != 0) {
+		printf("ft_strace: Process %d detached\n<detached ...>\n\n", pid_ref);
+		ptrace(PTRACE_DETACH, pid_ref, 0, SIGCONT);
+	}
+
+	exit(0);
+}
+
 void	handle_ptrace_event(pid_t pid, int status)
 {
 	if (status>>8 == (SIGTRAP | (PTRACE_EVENT_EXIT<<8)))
@@ -111,7 +123,14 @@ int	trace(pid_t pid)
 	int exited = 0;
 	int is_64bit = 1;
 
-	if (ptrace(PTRACE_SEIZE, pid, 0, PTRACE_O_TRACESYSGOOD | PTRACE_O_EXITKILL | PTRACE_O_TRACEEXIT) == -1) {
+	unsigned int flags = PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEEXIT;
+
+	if (pid_ref == 0) {
+		// Exit on kill if not in -p.
+		flags |= PTRACE_O_EXITKILL;
+	}
+
+	if (ptrace(PTRACE_SEIZE, pid, 0, flags) == -1) {
 		perror("ATTACH");
 		exit(1);
 	}
@@ -208,6 +227,10 @@ int main(int argc, char **argv)
 	if (argc == 3 && strcmp("-p", argv[1]) == 0 && atoi(argv[2]) != 0)
 	{
 		pid = atoi(argv[2]);
+		pid_ref = pid;
+
+		signal(SIGINT, stop_tracing);
+
 		printf("%d\n", pid);
 	} else {
 		pid = fork();
@@ -218,6 +241,7 @@ int main(int argc, char **argv)
 		{
 			execvp(argv[1], &argv[1]);
 			printf("FATAL: execve error\n");
+
 		} else if (pid == -1) {
 			perror("fork");
 			exit(1);
