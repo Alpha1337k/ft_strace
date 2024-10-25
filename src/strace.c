@@ -4,7 +4,7 @@ extern const t_header SYSCALLS_x64[1024];
 extern const t_header SYSCALLS_x86[1024];
 
 #define EXIT_STATE_UNSET 0xFFFF
-#define IS_EXIT_STATE(status) status & 0xFF == status
+#define IS_EXIT_STATE(status) (status & 0xFF) == status
 #define PTRACE_EVENT_STATE 0x8000
 #define PTRACE_EVENT(status) status >> 16
 #define IS_SIGNAL_STATE(status) ((status >> 8) & 0x7f) != 5
@@ -55,7 +55,7 @@ regs_t get_next_syscall_regs(pid_t pid, int *exit_state, int *status)
 {
 	struct i386_user_regs_struct i386_regs;
 	struct user_regs_struct x64_regs;
-	regs_t rv;
+	regs_t rv = {};
 
 	if (ptrace(PTRACE_SYSCALL, pid, 0, 0) == -1) {
 		perror("syscall1");
@@ -136,6 +136,11 @@ int	trace(pid_t pid)
 	}
 
 	int interrupt = ptrace(PTRACE_INTERRUPT, pid, NULL, NULL);
+	if (interrupt == -1) {
+		perror("PTRACE_INTERRUPT");
+		exit(1);
+	}
+
 	pid = waitpid(pid, &status, 0);
 	
 	while(1)
@@ -165,7 +170,7 @@ int	trace(pid_t pid)
 
 			printf("%s", handle_signal(&info));
 
-			if (regs.syscall == -1) {
+			if (regs.syscall == (unsigned int)-1) {
 				printf("+++ killed +++\n");
 				exit(0);
 			}
@@ -173,8 +178,6 @@ int	trace(pid_t pid)
 		}
 
 		if (IS_EXIT_STATE(exit_state)) {
-			unsigned long res = 0;
-
 			printf("+++ exited with %u +++\n", status);
 			return 0;
 		}

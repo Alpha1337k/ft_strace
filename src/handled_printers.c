@@ -2,6 +2,9 @@
 
 char	*parse_void_ptr(void *data, pid_t pid, regs_t regs)
 {
+	(void)pid;
+	(void)regs;
+
 	char *s = malloc(40);
 	if (!s) return 0;
 
@@ -14,6 +17,9 @@ char	*parse_void_ptr(void *data, pid_t pid, regs_t regs)
 
 char	*parse_unsigned_int(void *data, pid_t pid, regs_t regs)
 {
+	(void)pid;
+	(void)regs;
+
 	char *s = malloc(40);
 	if (!s) return 0;
 
@@ -23,6 +29,9 @@ char	*parse_unsigned_int(void *data, pid_t pid, regs_t regs)
 
 char	*parse_size_t(void *data, pid_t pid, regs_t regs)
 {
+	(void)pid;
+	(void)regs;
+
 	char *s = malloc(40);
 	if (!s) return 0;
 
@@ -59,6 +68,8 @@ char	*replace_special_chars(char s) {
 
 char	*__parse_char_ptr(void *data, pid_t pid, regs_t regs, int len)
 {
+	(void)regs;
+
 	size_t idx = 0;
 	size_t str_idx = 0;
 	char is_eol = 0;
@@ -83,7 +94,7 @@ char	*__parse_char_ptr(void *data, pid_t pid, regs_t regs, int len)
 
 		long addy = ptrace(PTRACE_PEEKTEXT, pid, data + idx, NULL);
 		if (errno != 0) {
-			printf("\n%p %d\n", data, idx);
+			printf("\n%p %ld\n", data, idx);
 			perror("peektext");
 			exit(1);
 		}
