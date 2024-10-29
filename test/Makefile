@@ -10,7 +10,7 @@ RM =rm -rf
 all: $(BINS)
 
 %: $(SRC)/%.c
-	$(CC) $(FLAGS) -o $(BIN)/$@ $<
+	$(FLAGS) -o $@ $<
 
 clean:
 
