@@ -8,6 +8,7 @@ extern const t_header SYSCALLS_x86[1024];
 #define PTRACE_EVENT_STATE 0x8000
 #define PTRACE_EVENT(status) status >> 16
 #define IS_SIGNAL_STATE(status) ((status >> 8) & 0x7f) != 5
+#define NT_PRSTATUS 1
 
 pid_t pid_ref = 0;
 
@@ -20,28 +21,6 @@ void	stop_tracing()
 
 	exit(0);
 }
-
-void	handle_ptrace_event(pid_t pid, int status)
-{
-	if (status>>8 == (SIGTRAP | (PTRACE_EVENT_EXIT<<8)))
-	{
-		unsigned long res = 0;
-		if (ptrace(PTRACE_GETEVENTMSG, pid, 0, &res) == -1) {
-			perror("TRACEEXIT");
-			exit(1);
-		}
-
-		printf(" = ?\n+++ exited with %lu +++\n", res >> 8 & 0xFF);
-
-		exit(0);
-	} else if (status>>8 == (SIGTRAP | (PTRACE_EVENT_EXEC<<8))) {
-		return;
-	}
-
-	assert(0);
-}
-
-#define NT_PRSTATUS 1
 
 t_header get_syscall_header(regs_t registers)
 {
@@ -67,12 +46,7 @@ regs_t get_next_syscall_regs(pid_t pid, int *exit_state, int *status)
 	}
 
 	if (WIFEXITED(*status)) {
-		exit_state[0] = *status;
-		return rv;
-	}
-
-	if (PTRACE_EVENT(*status)) {
-		exit_state[0] = PTRACE_EVENT_STATE;
+		exit_state[0] = 0xFF;
 		return rv;
 	}
 
@@ -123,7 +97,7 @@ int	trace(pid_t pid)
 	int exited = 0;
 	int is_64bit = 1;
 
-	unsigned int flags = PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEEXIT;
+	unsigned int flags = PTRACE_O_TRACESYSGOOD;
 
 	if (pid_ref == 0) {
 		// Exit on kill if not in -p.
@@ -156,10 +130,6 @@ int	trace(pid_t pid)
 			is_64bit = 1;
 		}
 
-		if (exit_state == PTRACE_EVENT_STATE) {
-			handle_ptrace_event(pid, status);
-		}
-
 		if (IS_SIGNAL_STATE(status)) {
 			siginfo_t info;
 
@@ -178,7 +148,7 @@ int	trace(pid_t pid)
 		}
 
 		if (IS_EXIT_STATE(exit_state)) {
-			printf("+++ exited with %u +++\n", status);
+			printf("+++ exited with %u +++\n", WEXITSTATUS(status));
 			return 0;
 		}
 
@@ -201,11 +171,8 @@ int	trace(pid_t pid)
 
 		regs = get_next_syscall_regs(pid, &exit_state, &status);
 
-		if (exit_state == PTRACE_EVENT_STATE) {
-			handle_ptrace_event(pid, status);
-		}
 		if (IS_EXIT_STATE(exit_state)) {
-			printf("+++ exited with %u +++\n", status);
+			printf("+++ exited with %u +++\n", WEXITSTATUS(status));
 			return 0;
 		}
 
@@ -244,6 +211,7 @@ int main(int argc, char **argv)
 		{
 			execvp(argv[1], &argv[1]);
 			printf("FATAL: execve error\n");
+			exit(1);
 
 		} else if (pid == -1) {
 			perror("fork");
