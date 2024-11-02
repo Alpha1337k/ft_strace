@@ -52,6 +52,8 @@ Mkfile.old
 dkms.conf
 
 ft_strace
-out
+out*
 test/fork
 test/segfault
+test/fork_32
+test/segfault_32

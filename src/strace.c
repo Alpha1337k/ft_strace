@@ -208,7 +208,7 @@ int main(int argc, char **argv)
 		} else if (pid == 0)
 		{
 			execvp(argv[1], &argv[1]);
-			dprintf(STDERR_FILENO, "FATAL: execve error\n");
+			perror("execve");
 			exit(1);
 
 		} else if (pid == -1) {
