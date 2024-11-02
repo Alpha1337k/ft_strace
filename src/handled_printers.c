@@ -94,7 +94,6 @@ char	*__parse_char_ptr(void *data, pid_t pid, regs_t regs, int len)
 
 		long addy = ptrace(PTRACE_PEEKTEXT, pid, data + idx, NULL);
 		if (errno != 0) {
-			printf("\n%p %ld\n", data, idx);
 			perror("peektext");
 			exit(1);
 		}

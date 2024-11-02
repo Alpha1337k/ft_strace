@@ -17,6 +17,23 @@
 #include <string.h>
 #include <signal.h>
 
+
+#ifndef COLORS_DISABLED
+	#define COLOR_RESET "\033[0m"
+	#define COLOR_CYAN "\033[36;1m"
+	#define COLOR_YELLOW "\033[0;33m"
+	#define COLOR_RED "\033[0;31m"
+	#define COLOR_RED_BOLD "\033[31;1m"
+	#define COLOR_GRAY "\033[38;5;248m"
+#else
+	#define COLOR_RESET 
+	#define COLOR_CYAN
+	#define COLOR_YELLOW
+	#define COLOR_RED
+	#define COLOR_RED_BOLD 
+	#define COLOR_GRAY
+#endif
+
 #define _POSIX_C_SOURCE  200809L
 
 typedef struct regs_s

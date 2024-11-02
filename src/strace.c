@@ -123,10 +123,10 @@ int	trace(pid_t pid)
 		regs_t regs = get_next_syscall_regs(pid, &exit_state, &status);
 
 		if (is_64bit == 1 && regs.is64bit == 0) {
-			printf("\e[38;5;248mstrace: [ Process PID=%d runs in 32 bit mode. ]\033[0m\n", pid);
+			printf(COLOR_GRAY"strace: [ Process PID=%d runs in 32 bit mode. ]\n"COLOR_RESET, pid);
 			is_64bit = 0;
 		} else if (is_64bit == 0 && regs.is64bit == 1) {
-			printf("strace: [ Process PID=%d runs in 64 bit mode. ]\n", pid);
+			printf(COLOR_GRAY"strace: [ Process PID=%d runs in 64 bit mode. ]\n"COLOR_RESET, pid);
 			is_64bit = 1;
 		}
 
@@ -154,7 +154,7 @@ int	trace(pid_t pid)
 
 
 		t_header header = get_syscall_header(regs);
-		printf("\033[31;1m%s\033[0m(", header.name);
+		printf(COLOR_RED_BOLD"%s"COLOR_RESET"(", header.name);
 
 		for (size_t i = 0; i < 6; i++)
 		{
