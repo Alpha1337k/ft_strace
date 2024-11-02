@@ -15,7 +15,7 @@ pid_t pid_ref = 0;
 void	stop_tracing()
 {
 	if (pid_ref != 0) {
-		printf("ft_strace: Process %d detached\n<detached ...>\n\n", pid_ref);
+		dprintf(STDERR_FILENO, "ft_strace: Process %d detached\n<detached ...>\n\n", pid_ref);
 		ptrace(PTRACE_DETACH, pid_ref, 0, SIGCONT);
 	}
 
@@ -123,10 +123,10 @@ int	trace(pid_t pid)
 		regs_t regs = get_next_syscall_regs(pid, &exit_state, &status);
 
 		if (is_64bit == 1 && regs.is64bit == 0) {
-			printf(COLOR_GRAY"strace: [ Process PID=%d runs in 32 bit mode. ]\n"COLOR_RESET, pid);
+			dprintf(STDERR_FILENO, COLOR_GRAY"strace: [ Process PID=%d runs in 32 bit mode. ]\n"COLOR_RESET, pid);
 			is_64bit = 0;
 		} else if (is_64bit == 0 && regs.is64bit == 1) {
-			printf(COLOR_GRAY"strace: [ Process PID=%d runs in 64 bit mode. ]\n"COLOR_RESET, pid);
+			dprintf(STDERR_FILENO, COLOR_GRAY"strace: [ Process PID=%d runs in 64 bit mode. ]\n"COLOR_RESET, pid);
 			is_64bit = 1;
 		}
 
@@ -138,23 +138,23 @@ int	trace(pid_t pid)
 				exit(1);
 			}
 
-			printf("%s", handle_signal(&info));
+			dprintf(STDERR_FILENO, "%s", handle_signal(&info));
 
 			if (regs.syscall == (unsigned int)-1) {
-				printf("+++ killed +++\n");
+				dprintf(STDERR_FILENO, "+++ killed +++\n");
 				exit(0);
 			}
 			continue;
 		}
 
 		if (IS_EXIT_STATE(exit_state)) {
-			printf("+++ exited with %u +++\n", WEXITSTATUS(status));
+			dprintf(STDERR_FILENO,"+++ exited with %u +++\n", WEXITSTATUS(status));
 			return 0;
 		}
 
 
 		t_header header = get_syscall_header(regs);
-		printf(COLOR_RED_BOLD"%s"COLOR_RESET"(", header.name);
+		dprintf(STDERR_FILENO, COLOR_RED_BOLD"%s"COLOR_RESET"(", header.name);
 
 		for (size_t i = 0; i < 6; i++)
 		{
@@ -162,7 +162,7 @@ int	trace(pid_t pid)
 			{
 				char *str = header.funcs[i]((void *)regs.args[i], pid, regs);
 
-				printf("%s%c", str, i + 1 != 6 && header.funcs[i + 1] != 0 ? ',' : ')');
+				dprintf(STDERR_FILENO, "%s%c", str, i + 1 != 6 && header.funcs[i + 1] != 0 ? ',' : ')');
 				free(str);
 			} else {
 				break;
@@ -172,13 +172,13 @@ int	trace(pid_t pid)
 		regs = get_next_syscall_regs(pid, &exit_state, &status);
 
 		if (IS_EXIT_STATE(exit_state)) {
-			printf("+++ exited with %u +++\n", WEXITSTATUS(status));
+			dprintf(STDERR_FILENO, " = ?\n+++ exited with %u +++\n", WEXITSTATUS(status));
 			return 0;
 		}
 
 		char *rax_res = exited ? strdup("?") : header.rax_resolver((void *)regs.rval, pid, regs);
 
-		printf(" = %s\n", rax_res);
+		dprintf(STDERR_FILENO, " = %s\n", rax_res);
 
 		free(rax_res);
 
@@ -191,7 +191,7 @@ int main(int argc, char **argv)
 
 	if (argc < 2)
 	{
-		printf("ft_strace: must have PROG [ARGS]\n");
+		dprintf(STDERR_FILENO, "ft_strace: must have PROG [ARGS]\n");
 		return 1;
 	}
 	if (argc == 3 && strcmp("-p", argv[1]) == 0 && atoi(argv[2]) != 0)
@@ -200,17 +200,15 @@ int main(int argc, char **argv)
 		pid_ref = pid;
 
 		signal(SIGINT, stop_tracing);
-
-		printf("%d\n", pid);
 	} else {
 		pid = fork();
 		if (pid == -1) {
-			printf("failed to open pipe");
+			dprintf(STDERR_FILENO, "failed to open pipe");
 			return 1;
 		} else if (pid == 0)
 		{
 			execvp(argv[1], &argv[1]);
-			printf("FATAL: execve error\n");
+			dprintf(STDERR_FILENO, "FATAL: execve error\n");
 			exit(1);
 
 		} else if (pid == -1) {

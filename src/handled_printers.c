@@ -101,7 +101,6 @@ char	*__parse_char_ptr(void *data, pid_t pid, regs_t regs, int len)
 		for (size_t i = 0; i < 8; i++)
 		{
 			char val = ((char *)&addy)[i];
-			// printf("V:%x %d\n", (unsigned)val, val);
 			if (replace_special_chars(val) != 0)
 				str_idx += sprintf(s + str_idx, "%s", replace_special_chars(val));
 			else if ((val < 31 || val > 126))

@@ -7,11 +7,12 @@ SRC=src/handled_printers.c src/printers.c src/signals.c src/strace.c src/syscall
 LIBS=
 OBJ=
 RM =rm -rf
+DEFINES= #-D COLORS_DISABLED
 
 all: $(NAME)
 
 $(NAME): $(SRC)
-	$(CC) $(FLAGS) $(LIBS) $(SRC) -o $(NAME)
+	$(CC) $(FLAGS) $(LIBS) $(DEFINES) $(SRC) -o $(NAME)
 
 clean:
 	$(RM) $(OBJ)
