@@ -9,9 +9,9 @@ char	*parse_void_ptr(void *data, pid_t pid, regs_t regs)
 	if (!s) return 0;
 
 	if (data == 0)
-		sprintf(s, "\033[36;1mNULL\033[0m");
+		sprintf(s, COLOR_CYAN"NULL"COLOR_RESET);
 	else
-		sprintf(s, "\033[36;1m%p\033[0m", data);
+		sprintf(s, COLOR_CYAN"%p"COLOR_RESET, data);
 	return s;
 }
 
@@ -23,7 +23,7 @@ char	*parse_unsigned_int(void *data, pid_t pid, regs_t regs)
 	char *s = malloc(40);
 	if (!s) return 0;
 
-	sprintf(s, "\033[0;33m%ld\033[0m", (unsigned long)data);
+	sprintf(s, COLOR_YELLOW"%ld"COLOR_RESET, (unsigned long)data);
 	return s;
 }
 
@@ -35,7 +35,7 @@ char	*parse_size_t(void *data, pid_t pid, regs_t regs)
 	char *s = malloc(40);
 	if (!s) return 0;
 
-	sprintf(s, "\033[0;33m%ld\033[0m", (size_t)data);
+	sprintf(s, COLOR_YELLOW"%ld"COLOR_RESET, (size_t)data);
 	return s;
 }
 
@@ -80,7 +80,7 @@ char	*__parse_char_ptr(void *data, pid_t pid, regs_t regs, int len)
 
 	if (data == NULL) {
 		char *rv = malloc(1024);
-		sprintf(rv, "\033[36;1mNULL\033[0m");
+		sprintf(rv, COLOR_CYAN"NULL"COLOR_RESET);
 		free(s);
 		return rv;
 	}
@@ -118,9 +118,9 @@ char	*__parse_char_ptr(void *data, pid_t pid, regs_t regs, int len)
 	}
 	char *rv = malloc(1024);
 	if (is_eol)
-		sprintf(rv, "\"\033[0;31m%s\033[0m\"", s);
+		sprintf(rv, "\""COLOR_RED"%s"COLOR_RESET"\"", s);
 	else 
-		sprintf(rv, "\"\033[0;31m%s\033[0m\"...", s);
+		sprintf(rv, "\""COLOR_RED"%s"COLOR_RESET"\"...", s);
 	
 	free(s);
 
